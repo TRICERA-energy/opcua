@@ -13,6 +13,7 @@ import (
 	"encoding/binary"
 	"math"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -29,11 +30,8 @@ func (srv *Server) findServers(ch *serverSecureChannel, requestid uint32, req *u
 	srvs := make([]ua.ApplicationDescription, 0, 1)
 	for _, s := range []ua.ApplicationDescription{srv.LocalDescription()} {
 		if len(req.ServerURIs) > 0 {
-			for _, su := range req.ServerURIs {
-				if s.ApplicationURI == su {
-					srvs = append(srvs, s)
-					break
-				}
+			if slices.Contains(req.ServerURIs, s.ApplicationURI) {
+				srvs = append(srvs, s)
 			}
 		} else {
 			srvs = append(srvs, s)
@@ -60,12 +58,9 @@ func (srv *Server) getEndpoints(ch *serverSecureChannel, requestid uint32, req *
 	eps := make([]ua.EndpointDescription, 0, len(srv.Endpoints()))
 	for _, ep := range srv.Endpoints() {
 		if len(req.ProfileURIs) > 0 {
-			for _, pu := range req.ProfileURIs {
-				if ep.TransportProfileURI == pu {
-					ep.EndpointURL = req.EndpointURL
-					eps = append(eps, ep)
-					break
-				}
+			if slices.Contains(req.ProfileURIs, ep.TransportProfileURI) {
+				ep.EndpointURL = req.EndpointURL
+				eps = append(eps, ep)
 			}
 		} else {
 			ep.EndpointURL = req.EndpointURL
@@ -1205,7 +1200,7 @@ func (srv *Server) handleBrowse(ch *serverSecureChannel, requestid uint32, req *
 	wg := sync.WaitGroup{}
 	wg.Add(l)
 
-	for ii := 0; ii < l; ii++ {
+	for ii := range l {
 		i := ii
 		wp.Submit(func() {
 			d := req.NodesToBrowse[i]
@@ -1469,7 +1464,7 @@ func (srv *Server) handleBrowseNext(ch *serverSecureChannel, requestid uint32, r
 	wg := sync.WaitGroup{}
 	wg.Add(l)
 
-	for ii := 0; ii < l; ii++ {
+	for ii := range l {
 		i := ii
 		wp.Submit(func() {
 			cp := req.ContinuationPoints[i]
@@ -1654,7 +1649,7 @@ func (srv *Server) handleTranslateBrowsePathsToNodeIds(ch *serverSecureChannel, 
 	wg := sync.WaitGroup{}
 	wg.Add(l)
 
-	for ii := 0; ii < l; ii++ {
+	for ii := range l {
 		i := ii
 		wp.Submit(func() {
 			d := req.BrowsePaths[i]
@@ -1832,7 +1827,7 @@ func (srv *Server) handleRegisterNodes(ch *serverSecureChannel, requestid uint32
 	}
 	results := make([]ua.NodeID, l)
 
-	for ii := 0; ii < l; ii++ {
+	for ii := range l {
 		results[ii] = req.NodesToRegister[ii]
 	}
 
@@ -2212,7 +2207,7 @@ func (srv *Server) handleRead(ch *serverSecureChannel, requestid uint32, req *ua
 	wg := sync.WaitGroup{}
 	wg.Add(l)
 
-	for ii := 0; ii < l; ii++ {
+	for ii := range l {
 		i := ii
 		wp.Submit(func() {
 			n := req.NodesToRead[i]
@@ -2360,7 +2355,7 @@ func (srv *Server) handleWrite(ch *serverSecureChannel, requestid uint32, req *u
 	wg := sync.WaitGroup{}
 	wg.Add(l)
 
-	for ii := 0; ii < l; ii++ {
+	for ii := range l {
 		i := ii
 		wp.Submit(func() {
 			n := req.NodesToWrite[i]
@@ -3427,13 +3422,13 @@ func parseBounds(s string, length int) (int, int, ua.StatusCode) {
 		return 0, length, ua.Good
 	}
 
-	index := strings.Index(s, ":")
-	if index != -1 {
-		lo, err = strconv.ParseInt(s[:index], 10, 32)
+	before, after, ok := strings.Cut(s, ":")
+	if ok {
+		lo, err = strconv.ParseInt(before, 10, 32)
 		if err != nil {
 			return -1, -1, ua.BadIndexRangeInvalid
 		}
-		hi, err = strconv.ParseInt(s[index+1:], 10, 32)
+		hi, err = strconv.ParseInt(after, 10, 32)
 		if err != nil {
 			return -1, -1, ua.BadIndexRangeInvalid
 		}
@@ -3612,7 +3607,7 @@ func (srv *Server) handleCall(ch *serverSecureChannel, requestid uint32, req *ua
 	wg := sync.WaitGroup{}
 	wg.Add(l)
 
-	for ii := 0; ii < l; ii++ {
+	for ii := range l {
 		i := ii
 		wp.Submit(func() {
 			n := req.MethodsToCall[i]
@@ -4722,13 +4717,13 @@ func (srv *Server) validateIndexRange(s string, dataType ua.NodeID, rank int32) 
 
 	ranges := strings.Split(s, ",")
 	for _, r := range ranges {
-		index := strings.Index(r, ":")
-		if index != -1 {
-			lo, err = strconv.ParseInt(r[:index], 10, 32)
+		before, after, ok := strings.Cut(r, ":")
+		if ok {
+			lo, err = strconv.ParseInt(before, 10, 32)
 			if err != nil {
 				return ua.BadIndexRangeInvalid
 			}
-			hi, err = strconv.ParseInt(r[index+1:], 10, 32)
+			hi, err = strconv.ParseInt(after, 10, 32)
 			if err != nil {
 				return ua.BadIndexRangeInvalid
 			}

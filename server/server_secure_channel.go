@@ -345,10 +345,7 @@ func (ch *serverSecureChannel) Open() error {
 	}
 
 	ch.pendingTokenID = ch.getNextTokenID()
-	revisedLifetime := oscr.RequestedLifetime
-	if revisedLifetime > maxTokenLifetime {
-		revisedLifetime = maxTokenLifetime
-	}
+	revisedLifetime := min(oscr.RequestedLifetime, maxTokenLifetime)
 	if revisedLifetime < minTokenLifetime {
 		revisedLifetime = minTokenLifetime
 	}
@@ -496,11 +493,7 @@ func (ch *serverSecureChannel) sendOpenSecureChannelResponse(res *ua.OpenSecureC
 			cipherTextBlockSize = 1
 			plainTextBlockSize = 1
 			maxBodySize = int(ch.sendBufferSize) - plainHeaderSize - sequenceHeaderSize - paddingHeaderSize - signatureSize
-			if bodyCount < maxBodySize {
-				bodySize = bodyCount
-			} else {
-				bodySize = maxBodySize
-			}
+			bodySize = min(bodyCount, maxBodySize)
 			chunkSize = plainHeaderSize + sequenceHeaderSize + bodySize + paddingSize + paddingHeaderSize + signatureSize
 		}
 
@@ -944,11 +937,7 @@ func (ch *serverSecureChannel) sendServiceResponse(response ua.ServiceResponse, 
 			paddingHeaderSize = 0
 			paddingSize = 0
 			maxBodySize = int(ch.sendBufferSize) - plainHeaderSize - sequenceHeaderSize - paddingHeaderSize - signatureSize
-			if bodyCount < maxBodySize {
-				bodySize = bodyCount
-			} else {
-				bodySize = maxBodySize
-			}
+			bodySize = min(bodyCount, maxBodySize)
 			chunkSize = plainHeaderSize + sequenceHeaderSize + bodySize + paddingSize + paddingHeaderSize + signatureSize
 		}
 
@@ -1479,10 +1468,7 @@ func (ch *serverSecureChannel) handleOpenSecureChannel(requestid uint32, req *ua
 	ch.remoteNonce = []byte(req.ClientNonce)
 
 	ch.pendingTokenID = ch.getNextTokenID()
-	revisedLifetime := req.RequestedLifetime
-	if revisedLifetime > maxTokenLifetime {
-		revisedLifetime = maxTokenLifetime
-	}
+	revisedLifetime := min(req.RequestedLifetime, maxTokenLifetime)
 	if revisedLifetime < minTokenLifetime {
 		revisedLifetime = minTokenLifetime
 	}
@@ -1565,7 +1551,7 @@ func calculatePSHA(secret, seed []byte, sizeBytes int, securityPolicyURI string)
 	output := make([]byte, sizeBytes)
 	a := seed
 	iterations := (sizeBytes + size - 1) / size
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		mac.Reset()
 		mac.Write(a)
 		buf := mac.Sum(nil)
@@ -1575,10 +1561,7 @@ func calculatePSHA(secret, seed []byte, sizeBytes int, securityPolicyURI string)
 		mac.Write(seed)
 		buf2 := mac.Sum(nil)
 		m := size * i
-		n := sizeBytes - m
-		if n > size {
-			n = size
-		}
+		n := min(sizeBytes-m, size)
 		copy(output[m:m+n], buf2)
 	}
 

@@ -46,7 +46,7 @@ type CustomStruct struct {
 }
 
 func init() {
-	ua.RegisterBinaryEncodingID(reflect.TypeOf(CustomStruct{}), ua.ParseExpandedNodeID("nsu=http://github.com/awcullen/opcua/testserver/;i=12"))
+	ua.RegisterBinaryEncodingID(reflect.TypeFor[CustomStruct](), ua.ParseExpandedNodeID("nsu=http://github.com/awcullen/opcua/testserver/;i=12"))
 }
 
 func main() {
